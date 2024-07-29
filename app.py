@@ -7,10 +7,18 @@ import os
 load_dotenv()
 
 # Configure Google Generative AI
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+api_key = os.getenv("GEMINI_API_KEY")
+if not api_key:
+    st.error("API key is missing. Please set the GEMINI_API_KEY environment variable.")
+else:
+    genai.configure(api_key=api_key)
 
-# Set up the model
-model = genai.GenerativeModel('gemini-pro')
+    # Initialize the model
+    try:
+        model = genai.GenerativeModel('gemini-pro')
+    except AttributeError as e:
+        st.error(f"Error initializing model: {e}")
+        model = None
 
 # Initialize session state
 if "messages" not in st.session_state:
@@ -94,15 +102,20 @@ if user_input or (selected_reply != "Select a quick reply"):
         st.markdown(user_input)
     
     # Generate AI response
-    response = model.generate_content(user_input)
-    
-    # Add AI response to chat history
-    st.session_state.messages.append({"role": "assistant", "content": response.text})
-    
-    # Display AI response
-    with st.chat_message("assistant"):
-        st.markdown(response.text)
-        get_feedback(len(st.session_state.messages) - 1)
+    if model:
+        try:
+            response = model.generate_content(user_input)
+            # Add AI response to chat history
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+            
+            # Display AI response
+            with st.chat_message("assistant"):
+                st.markdown(response.text)
+                get_feedback(len(st.session_state.messages) - 1)
+        except Exception as e:
+            st.error(f"Error generating response: {e}")
+    else:
+        st.error("Model is not initialized. Please check your API configuration.")
 
 # Clear chat history button
 if st.sidebar.button("Clear Chat History"):
